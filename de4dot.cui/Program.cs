@@ -111,6 +111,7 @@ namespace de4dot.cui {
 				Logger.n("");
 				Logger.n("de4dot v{0} Copyright (C) 2011-2015 de4dot@gmail.com", System.Reflection.Assembly.GetExecutingAssembly().GetName().Version);
 				Logger.n("Latest version and source code: https://github.com/0xd4d/de4dot");
+				PrintColoredLine("  - modded by dawwinci -", ConsoleColor.Cyan);
 				Logger.n("");
 
 				var options = new FilesDeobfuscator.Options();
@@ -157,6 +158,24 @@ namespace de4dot.cui {
 			}
 
 			return exitCode;
+		}
+
+		static void PrintColoredLine(string text, ConsoleColor color) {
+			var oldColor = Console.ForegroundColor;
+			try {
+				Console.ForegroundColor = color;
+				Console.WriteLine(text);
+			}
+			catch {
+				Console.WriteLine(text);
+			}
+			finally {
+				try {
+					Console.ForegroundColor = oldColor;
+				}
+				catch {
+				}
+			}
 		}
 
 		static bool PrintFullStackTrace() {

@@ -1,137 +1,73 @@
-## de4dot CEx
-A de4dot fork with full support for vanilla ConfuserEx
+# de4dot-cex-babel
 
-## Features
-* Supports x86 (native) mode
-* Supports normal mode
-* Decrypts and inlines constants
-* Decrypts resources
-* Fixes control flow
-* Fixes proxy calls
-* Deobfuscated assemblies are runnable
+Fork of de4dot CEx with native Babel Obfuscator integration (single-step workflow).
+
+## What was added
+
+- Native Babel detection integrated in de4dot pipeline
+- Babel version reporting in detection/verbose logs
+- Legacy compatibility cleanup pass for Babel-protected assemblies
+- Delegate wrapper cleanup ported from legacy Babel tooling patterns
+- Babel VM/delegate/runtime cleanup orchestration inside de4dot module flow
+- Better runtime dependency hints when cleanup is partial
+- Regression helper scripts for Babel samples
+
+## Current Babel workflow
+
+Before:
+1. `Babel-DeobfuscatorNET4`
+2. `de4dot CEx`
+
+Now:
+1. `de4dot.exe test_babel.dll`
+
+## Build
+
+Recommended full build:
+
+```powershell
+C:\Windows\Microsoft.NET\Framework\v4.0.30319\MSBuild.exe de4dot.sln /t:Build /p:Configuration=Release /p:Platform="Mixed Platforms" /p:CscToolPath=C:\BuildTools\MSBuild\Current\Bin\Roslyn /p:CscToolExe=csc.exe
+```
+
+Scripted core build:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build-release.ps1 -Clean
+```
+
+## Test / regression
+
+Run deobfuscation:
+
+```powershell
+.\Release\de4dot.exe -f .\test_file_v2\test_babel_old_vers.dll -v
+```
+
+Run batch regression on `test_file*` directories:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\babel-regression.ps1
+```
+
+Outputs include detection score, detected Babel version, cleanup exit code, unresolved delegates, missing dependencies, and output hash.
 
 ## Notes
-* You have to unpack the obfuscated assembly **before** running this deobfuscator. The easiest way is to dump the module/s just after the methods have been decrypted.
-* This deobfuscator uses method invocation for constant decryption, therefore you always **risk** running malware if it's present in the obfuscated assembly. Be cautious and use a VM/Sandboxie!
 
-### [Original README](README-orig.md)
----
+- Some Babel samples require referenced runtime DLLs near target assembly for full delegate/VM cleanup.
+- If verbose logs show unresolved delegate wrappers, add missing dependencies and rerun.
+- This project may invoke methods during deobfuscation; use an isolated VM/sandbox for untrusted samples.
 
-## Samples
+## Credits / Thanks
 
-### Before (obfuscated symbols shortened):
-```csharp
-ublic byte[] ShiftAddress(uint address)
-{
-	byte[] array = new byte[4];
-	for (;;)
-	{
-		IL_07:
-		int num = -2174478396;
-		for (;;)
-		{
-			uint num2;
-			switch ((num2 = (uint)<Module>.a(num)) % 7u)
-			{
-			case 0u:
-				goto IL_07;
-			case 1u:
-			{
-				int num3 = 0;
-				num = (int)(num2 * 81144519u ^ 2359132411u);
-				continue;
-			}
-			case 2u:
-				num = (int)(num2 * 2975731004u ^ 34171348176);
-				continue;
-			case 3u:
-			{
-				int num3;
-				num3++;
-				num = (int)(num2 * 2174567110u ^ 244457623u);
-				continue;
-			}
-			case 5u:
-			{
-				int num3;
-				num = ((num3 >= 4) ? 631278122 : 1299552879);
-				continue;
-			}
-			case 6u:
-			{
-				int num3;
-				array[num3] = (byte)(address >> num3 * 8 & 255u);
-				num = 556578930;
-				continue;
-			}
-			}
-			return array;
-		}
-	}
-	return array;
-}
-```
+- Original de4dot by `0xd4d`
+- de4dot CEx base work by `ViRb3`
+- Babel reverse-engineering and legacy patterns inspired/adapted from `Babel-DeobfuscatorNET4`
+- Special thanks to **CodeExplorer** for shared code and research direction used during Babel integration
 
-### After:
-```csharp
-public byte[] ShiftAddress(uint address)
-{
-	byte[] array = new byte[4];
-	for (int i = 0; i < 4; i++)
-	{
-		array[i] = (byte)(address >> i * 8 & 255u);
-	}
-	return array;
-}
-```
+## License
 
-### Before (obfuscated symbols shortened):
-```csharp
-public bool WriteBytes(uint address, List<byte> buffer)
-{
-	byte[] array = buffer.ToArray();
-	IntPtr intPtr;
-	uint num = Memory.a(this.Handle, b((long)((ulong)address)), array, (uint)array.Length, out intPtr);
-	for (;;)
-	{
-		IL_25:
-		int num2 = 482469350;
-		for (;;)
-		{
-			uint num3;
-			switch ((num3 = (uint)<Module>.c(num2)) % 5u)
-			{
-			case 0u:
-				this.d.Account.Log.WriteLine(<Module>.e<string>(3167610260u));
-				num2 = (int)(num3 * 3588940066u ^ 1074051690u);
-				continue;
-			case 2u:
-				return false;
-			case 3u:
-				goto IL_25;
-			case 4u:
-				num2 = (int)(((num != 0u) ? 4496537787u : 434512514u) ^ num3 * 589449693u);
-				continue;
-			}
-			goto Block_1;
-		}
-	}
-	Block_1:
-	return true;
-}
-```
+This project follows de4dot licensing (GPLv3). Keep original notices and attribution when redistributing.
 
-### After:
-```csharp
-public bool WriteBytes(uint address, List<byte> buffer)
-{
-	byte[] array = buffer.ToArray();
-	IntPtr intPtr;
-	if (Memory.WriteProcessMemory(this.Handle, (IntPtr)((long)((ulong)address)), array, (uint)array.Length, out intPtr) == 0u)
-	{
-		this.Owner.Console.Log.WriteLine("WriteBytes failed: WriteProcessMemory failed");
-		return false;
-	}
-	return true;
-}
-```
+## References
+
+- Original de4dot README: [README-orig.md](README-orig.md)

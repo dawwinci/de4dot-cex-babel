@@ -80,7 +80,7 @@ namespace de4dot.code.deobfuscators.Babel_NET {
 	class Deobfuscator : DeobfuscatorBase {
 		Options options;
 		bool foundBabelAttribute = false;
-		string obfuscatorName = DeobfuscatorInfo.THE_NAME;
+		string obfuscatorName = "Babel Obfuscator .NET";
 		bool startedDeobfuscating = false;
 
 		ResourceResolver resourceResolver;
@@ -93,6 +93,7 @@ namespace de4dot.code.deobfuscators.Babel_NET {
 		DoubleValueInliner doubleValueInliner;
 		ProxyCallFixer proxyCallFixer;
 		MethodsDecrypter methodsDecrypter;
+		LegacyBabelCompat legacyBabelCompat;
 
 		internal class Options : OptionsBase {
 			public bool InlineMethods { get; set; }
@@ -151,6 +152,8 @@ namespace de4dot.code.deobfuscators.Babel_NET {
 				val += 100 + 10 * (sum - 1);
 			if (foundBabelAttribute)
 				val += 10;
+			if (legacyBabelCompat != null && legacyBabelCompat.Detected)
+				val += 60 + legacyBabelCompat.DetectionScore;
 
 			return val;
 		}
@@ -170,6 +173,10 @@ namespace de4dot.code.deobfuscators.Babel_NET {
 			proxyCallFixer.FindDelegateCreator();
 			methodsDecrypter = new MethodsDecrypter(module, resourceDecrypterCreator.Create(), DeobfuscatedFile.DeobfuscatorContext);
 			methodsDecrypter.Find();
+			legacyBabelCompat = new LegacyBabelCompat(module);
+			legacyBabelCompat.Find();
+			if (legacyBabelCompat.Detected && !string.IsNullOrEmpty(legacyBabelCompat.VersionString))
+				obfuscatorName = FormatBabelDetectedName(legacyBabelCompat.VersionString, legacyBabelCompat.VersionIsHeuristic);
 		}
 
 		void FindBabelAttribute() {
@@ -189,13 +196,24 @@ namespace de4dot.code.deobfuscators.Babel_NET {
 				var val = Regex.Match((string)versionField.Constant.Value, @"^(\d+\.\d+\.\d+\.\d+)$");
 				if (val.Groups.Count < 2)
 					return;
-				obfuscatorName = string.Format("{0} {1}", DeobfuscatorInfo.THE_NAME, val.Groups[1].ToString());
+				obfuscatorName = FormatBabelDetectedName(val.Groups[1].ToString(), false);
 				return;
 			}
 		}
 
+		static string FormatBabelDetectedName(string version, bool heuristic) {
+			if (string.IsNullOrEmpty(version))
+				return "Babel Obfuscator .NET";
+			return string.Format("Babel Obfuscator .NET v{0}", version);
+		}
+
 		public override void DeobfuscateBegin() {
 			base.DeobfuscateBegin();
+			if (legacyBabelCompat != null && legacyBabelCompat.Detected) {
+				Logger.v("[+] Babel Obfuscator detected (legacy compatibility signatures)");
+				if (!string.IsNullOrEmpty(legacyBabelCompat.VersionString))
+					Logger.v("[+] Babel version: {0}", legacyBabelCompat.VersionString);
+			}
 
 			if (options.DecryptResources) {
 				AddCctorInitCallToBeRemoved(resourceResolver.InitMethod);
@@ -243,6 +261,8 @@ namespace de4dot.code.deobfuscators.Babel_NET {
 			}
 
 			proxyCallFixer.Find();
+			if (legacyBabelCompat != null && legacyBabelCompat.Detected)
+				legacyBabelCompat.RunCleanupPasses();
 			startedDeobfuscating = true;
 		}
 

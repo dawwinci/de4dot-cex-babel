@@ -39,6 +39,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Prefer32Bit>false</Prefer32Bit>
+    <NoWarn>168;219;1685;1701;1702</NoWarn>
   </PropertyGroup>
   <PropertyGroup>
     <StartupObject />
@@ -118,6 +119,12 @@
     <Compile Include="deobfuscators\Babel_NET\Deobfuscator.cs" />
     <Compile Include="deobfuscators\Babel_NET\ImageReader.cs" />
     <Compile Include="deobfuscators\Babel_NET\InflaterCreator.cs" />
+    <Compile Include="deobfuscators\Babel_NET\LegacyBabelCompat.cs" />
+    <Compile Include="deobfuscators\Babel_NET\LegacyVM\DelegatesCleaner.cs" />
+    <Compile Include="deobfuscators\Babel_NET\LegacyVM\DecryptionMethods.cs" />
+    <Compile Include="deobfuscators\Babel_NET\LegacyVM\EncryptedMethodDetails.cs" />
+    <Compile Include="deobfuscators\Babel_NET\LegacyVM\SuperDynamicReader.cs" />
+    <Compile Include="deobfuscators\Babel_NET\LegacyVM\VMDecryptor.cs" />
     <Compile Include="deobfuscators\Babel_NET\MemberReferenceConverter.cs" />
     <Compile Include="deobfuscators\Babel_NET\MethodBodyReader.cs" />
     <Compile Include="deobfuscators\Babel_NET\MethodReferenceReader.cs" />
@@ -432,19 +439,26 @@
       <Name>dnlib</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="deobfuscators\Agile_NET\vm\v2\CsvmResources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>CsvmResources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
-  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>mkdir "..\$(OutDir)..\LICENSES"
-copy "$(SolutionDir)LICENSE*.txt" "..\$(OutDir)..\LICENSES"
-copy "$(SolutionDir)COPYING" "..\$(OutDir)..\LICENSES"
-copy "$(SolutionDir)BeaEngine.dll" "$(TargetDir)BeaEngine.dll"</PostBuildEvent>
+    <RepoRoot Condition="'$(SolutionDir)' != ''">$(SolutionDir)</RepoRoot>
+    <RepoRoot Condition="'$(RepoRoot)' == ''">$(MSBuildProjectDirectory)\..\</RepoRoot>
   </PropertyGroup>
+  <Target Name="CopyBuildArtifacts" AfterTargets="Build">
+    <MakeDir Directories="$(OutDir)..\LICENSES" />
+    <ItemGroup>
+      <LicenseFiles Include="$(RepoRoot)LICENSE*.txt" />
+      <LicenseFiles Include="$(RepoRoot)COPYING" />
+    </ItemGroup>
+    <Copy SourceFiles="@(LicenseFiles)"
+          DestinationFolder="$(OutDir)..\LICENSES"
+          SkipUnchangedFiles="true"
+          Condition="'@(LicenseFiles)' != ''" />
+    <Copy SourceFiles="$(RepoRoot)BeaEngine.dll"
+          DestinationFiles="$(TargetDir)BeaEngine.dll"
+          SkipUnchangedFiles="true"
+          Condition="Exists('$(RepoRoot)BeaEngine.dll')" />
+  </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
