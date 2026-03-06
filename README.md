@@ -57,6 +57,31 @@ Outputs include detection score, detected Babel version, cleanup exit code, unre
 - If verbose logs show unresolved delegate wrappers, add missing dependencies and rerun.
 - This project may invoke methods during deobfuscation; use an isolated VM/sandbox for untrusted samples.
 
+## Troubleshooting (Babel)
+
+If you see logs like:
+
+```text
+[!] Babel runtime dependency hint: missing referenced assemblies may reduce delegate/VM cleanup
+[!] Missing candidates: Newtonsoft.Json, WindowsBase
+...
+[!] Babel delegate cleanup incomplete: 1 unresolved wrappers remain
+[!] Missing runtime dependencies observed: Newtonsoft.Json
+```
+
+it means de4dot cleaned most Babel protections, but at least one delegate wrapper could not be resolved because required runtime dependencies were missing.
+
+Recommended fix:
+
+1. Place missing DLLs (for example `Newtonsoft.Json.dll`) next to the target assembly.
+2. Rerun de4dot with `-v`.
+3. Confirm the final pass reports `candidates=0` and no `unresolved wrappers remain`.
+
+Note:
+
+- `WindowsBase` may appear as a candidate in some environments because of framework references.
+- It is often informational only; the important line is `Missing runtime dependencies observed: ...`.
+
 ## Credits / Thanks
 
 - Original de4dot by `0xd4d`
